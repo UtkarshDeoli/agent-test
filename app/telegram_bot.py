@@ -204,16 +204,21 @@ def setup_telegram_bot() -> Optional[Application]:
 async def start_telegram_bot():
     app = setup_telegram_bot()
     if app:
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling()
-        logger.info("Telegram bot started successfully!")
+        try:
+            await app.initialize()
+            await app.start()
+            await app.updater.start_polling()
+            logger.info("Telegram bot started successfully!")
+        except Exception as e:
+            logger.error(f"Telegram bot failed to start: {e}")
 
 
 async def stop_telegram_bot():
     global telegram_app
     if telegram_app:
-        await telegram_app.updater.stop()
-        await telegram_app.stop()
+        if telegram_app.updater and telegram_app.updater.running:
+            await telegram_app.updater.stop()
+        if telegram_app.running:
+            await telegram_app.stop()
         await telegram_app.shutdown()
         logger.info("Telegram bot stopped.")

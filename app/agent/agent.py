@@ -16,7 +16,6 @@ from app.models.models import Memory
 from browser_use import Agent, Browser
 from browser_use.llm import ChatGoogle
 from dotenv import load_dotenv
-from prompts import PROMPTS
 import asyncio
 import os
 

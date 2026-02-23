@@ -17,16 +17,25 @@ logger = logging.getLogger(__name__)
 init_db()
 
 
+def has_valid_telegram_token() -> bool:
+    token = (settings.TELEGRAM_BOT_TOKEN or "").strip()
+    if not token:
+        return False
+    if token.lower() in {"your-telegram-bot-token-here", "changeme", "placeholder"}:
+        return False
+    return ":" in token
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     
     logger.info("Starting AI Agent...")
     
-    if settings.TELEGRAM_BOT_TOKEN:
+    if has_valid_telegram_token():
         asyncio.create_task(start_telegram_bot())
         logger.info("Telegram bot initialization started")
     else:
-        logger.warning("TELEGRAM_BOT_TOKEN not set. Telegram bot disabled.")
+        logger.warning("TELEGRAM_BOT_TOKEN missing/invalid. Telegram bot disabled.")
     
     yield
     

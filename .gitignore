@@ -20,3 +20,5 @@ dist/
 *.spec
 *.zip
 *.tar.gz
+app/agent/agent.py
+*.db
