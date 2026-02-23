@@ -4,7 +4,7 @@ import webbrowser
 import time
 import sys
 import os
-import signal
+# import signal
 
 def main():
     print("Starting AI Agent Desktop App...")
@@ -12,11 +12,11 @@ def main():
     project_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_dir)
     
-    venv_python = os.path.join(project_dir, "venv", "bin", "python")
-    venv_uvicorn = os.path.join(project_dir, "venv", "bin", "uvicorn")
+    venv_python = os.path.join(project_dir, ".venv", "bin", "python")
+    venv_uvicorn = os.path.join(project_dir, ".venv", "bin", "uvicorn")
     
     if not os.path.exists(venv_python):
-        print("Error: Virtual environment not found. Please run: python -m venv venv && source venv/bin/activate && pip install -r requirements.txt")
+        print("Error: Virtual environment not found. Please run: python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt")
         sys.exit(1)
     
     print("Starting server...")
