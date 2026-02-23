@@ -6,3 +6,17 @@
 db.sqlite3
 .env
 .env
+build/
+dist/
+*.egg-info/
+*.egg
+*.log
+*.bak
+*.swp
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.spec
+*.zip
+*.tar.gz
