@@ -13,6 +13,19 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.models import Memory
 
+from browser_use import Agent, Browser
+from browser_use.llm import ChatGoogle
+from dotenv import load_dotenv
+from prompts import PROMPTS
+import asyncio
+import os
+
+from playwright.sync_api import sync_playwright
+import os
+import json
+
+load_dotenv()
+
 
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
@@ -120,7 +133,142 @@ class AgentTools:
             """Get the current date and time."""
             return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         
-        return [save_memory, recall_memories, update_memory, delete_memory, get_current_time]
+        @tool
+        async def task_input(task: str) -> str:
+            """
+            Perform LinkedIn automation tasks using an AI-powered browser agent.
+            Use this tool when the user asks to do anything on LinkedIn such as:
+            - Sending connection requests to people
+            - Sending messages to connections
+            - Searching for people, jobs, or companies
+            - Viewing or interacting with posts
+            - Applying for jobs
+            - Scraping profile information
+
+            The task should be described in plain English as clearly and specifically as possible.
+            Example tasks:
+            - "Send a connection request to John Doe with a note saying hello"
+            - "Search for software engineers in Bangalore and send them connection requests"
+            - "Find the latest posts about AI and like the top 3"
+
+            Args:
+                task: A plain English description of the LinkedIn task to perform
+
+            Returns:
+                The final result or status of the automation task
+            """
+            llm = ChatGoogle(model="gemini-2.5-flash-lite",max_output_tokens=65536)
+
+            linkedin_email = os.getenv("LINKEDIN_EMAIL")
+            linkedin_password = os.getenv("LINKEDIN_PASSWORD")
+
+            if not linkedin_email or not linkedin_password:
+                raise ValueError("LinkedIn credentials not found in .env file")
+
+            linkedin_credentials = {
+                'linkedin_email': linkedin_email,
+                'linkedin_password': linkedin_password
+            }
+
+           
+
+            browser = Browser(
+                executable_path='C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                # user_data_dir='C:\\Users\\user\\AppData\\Local\\Google\\Chrome\\User Data',
+                profile_directory='Profile 7',
+                disable_security=False,
+                headless=False,
+                storage_state='./linkedin_auth.json',
+                keep_alive=True,
+            
+            )
+
+            agent = Agent(
+                task=task,
+                llm=llm,
+                browser=browser,
+                sensitive_data=linkedin_credentials,
+                use_vision=False,
+                max_actions_per_step=1
+            )
+
+            result = await agent.run()
+            
+            return result.final_result()
+
+     
+        @tool
+        def save_linkedin_cookies():
+             """
+            Log into LinkedIn and save authentication cookies to linkedin_auth.json.
+            Use this tool ONLY when:
+            - The user explicitly asks to log into LinkedIn
+            - LinkedIn automation fails due to authentication errors
+            - Setting up LinkedIn automation for the first time
+            This opens a real Chrome browser, logs in with stored credentials,
+            and saves the session cookies so future automation tasks don't need to log in again.
+            Do NOT call this tool before every automation task — only when authentication is needed.
+            Returns:
+            Confirmation that cookies were saved successfully
+            """
+             linkedin_email = os.getenv("LINKEDIN_EMAIL")
+             linkedin_password = os.getenv("LINKEDIN_PASSWORD")
+
+             essential_cookies = {
+                'lang',
+                'JSESSIONID',
+                'bcookie',
+                'bscookie',
+                'li_rm',
+                'liap',
+                'li_at',        # CRITICAL - Main auth token
+                'sdui_ver',
+                'lidc',
+                'NID',          # Google reCAPTCHA (needed for login verification)
+            }
+
+             with sync_playwright() as p:
+                browser = p.chromium.launch(headless=False)
+                context = browser.new_context()
+                page = context.new_page()
+
+                # Navigate to LinkedIn
+                page.goto('https://www.linkedin.com/login')
+
+                # Fill in credentials
+                page.fill('input[name="session_key"]', linkedin_email or "")
+                page.fill('input[name="session_password"]', linkedin_password or "")
+                page.click('button[type="submit"]')
+
+                # Wait for navigation after login
+                page.wait_for_url('https://www.linkedin.com/feed/', timeout=100000)
+
+                print("Login successful! Saving authentication state...")
+
+            
+            # Get the storage state
+                full_state = context.storage_state()
+                
+                # Filter cookies - keep only essential ones
+                filtered_cookies = [
+                    cookie for cookie in full_state['cookies']
+                    if cookie['name'] in essential_cookies
+                ]
+                
+                # Update state with filtered cookies
+                full_state['cookies'] = filtered_cookies
+                
+                # Save filtered state
+                with open('linkedin_auth.json', 'w') as f:
+                    json.dump(full_state, f, indent=2)
+
+                print(f"Authentication saved to linkedin_auth.json ({len(filtered_cookies)} cookies)")
+
+                browser.close()
+
+
+
+        return [save_memory, recall_memories, update_memory, delete_memory, get_current_time,task_input,save_linkedin_cookies]
 
 
 class Agent:

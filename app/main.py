@@ -19,6 +19,7 @@ init_db()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    
     logger.info("Starting AI Agent...")
     
     if settings.TELEGRAM_BOT_TOKEN:
